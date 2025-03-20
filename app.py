@@ -56,38 +56,35 @@ def tasks():
     session_file = f"session_{session['phone']}"
     client = TelegramClient(session_file, API_ID, API_HASH)
     
-    client.connect()
-    if not client.is_user_authorized():
-        return "Lỗi: Tài khoản chưa được xác thực."
-    
-    bot_username, referral_code = extract_bot_info(session['bot_link'])
-    if bot_username and referral_code:
+    with client:
+        if not client.is_user_authorized():
+            return "Lỗi: Tài khoản chưa được xác thực."
+        
+        bot_username, referral_code = extract_bot_info(session['bot_link'])
+        if bot_username and referral_code:
+            try:
+                bot_entity = client.get_entity(bot_username)
+                client(StartBotRequest(bot=bot_entity, peer=bot_entity, start_param=referral_code))
+            except Exception as e:
+                return f"Lỗi khi tham gia bot: {e}"
+        
+        for group_link in session['group_links']:
+            invite_hash = extract_invite_hash(group_link)
+            try:
+                if invite_hash:
+                    client(ImportChatInviteRequest(invite_hash))
+                else:
+                    username = group_link.split("/")[-1]
+                    client(JoinChannelRequest(username))
+            except Exception as e:
+                return f"Lỗi tham gia nhóm {group_link}: {e}"
+        
         try:
-            bot_entity = client.get_entity(bot_username)
-            client(StartBotRequest(bot=bot_entity, peer=bot_entity, start_param=referral_code))
+            client.send_message(bot_username, "Tôi đã tham gia tất cả các nhóm!")
         except Exception as e:
-            return f"Lỗi khi tham gia bot: {e}"
-    
-    for group_link in session['group_links']:
-        invite_hash = extract_invite_hash(group_link)
-        try:
-            if invite_hash:
-                client(ImportChatInviteRequest(invite_hash))
-            else:
-                username = group_link.split("/")[-1]
-                client(JoinChannelRequest(username))
-        except Exception as e:
-            return f"Lỗi tham gia nhóm {group_link}: {e}"
-    
-    try:
-        client.send_message(bot_username, "Tôi đã tham gia tất cả các nhóm!")
-    except Exception as e:
-        return f"Lỗi gửi tin nhắn: {e}"
+            return f"Lỗi gửi tin nhắn: {e}"
     
     return "Hoàn thành nhiệm vụ!"
 
 if __name__ == '__main__':
-    import sys
-    if 'input' in sys.modules:
-        sys.modules['input'] = lambda: session.get('phone', '')
     app.run(debug=True, host='0.0.0.0', port=5000)
