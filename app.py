@@ -34,23 +34,23 @@ def index():
 @app.route('/verify_otp', methods=['GET', 'POST'])
 def verify_otp():
     if 'phone' not in session:
-        return redirect(url_for('index'))  # Nếu không có số điện thoại, quay về trang chính
+        return redirect(url_for('index'))  # Quay về trang nhập số nếu chưa có session
     
     session_file = f"session_{session['phone']}"
     client = TelegramClient(session_file, API_ID, API_HASH)
-    
+
     client.connect()
     if not client.is_user_authorized():
         try:
             client.send_code_request(session['phone'])
         except Exception as e:
             return f"Lỗi gửi mã OTP: {e}"
-        
+
         if request.method == 'POST':
             try:
                 client.sign_in(session['phone'], request.form['otp'])
-                session['authenticated'] = True  # Lưu trạng thái đăng nhập
-                return redirect(url_for('tasks'))  # Chuyển hướng đến trang tasks
+                session['authenticated'] = True  # Đánh dấu đã đăng nhập thành công
+                return redirect(url_for('tasks'))
             except Exception as e:
                 return f"Lỗi xác thực OTP: {e}"
         return render_template('otp.html')
@@ -58,25 +58,27 @@ def verify_otp():
     session['authenticated'] = True
     return redirect(url_for('tasks'))
 
-
 @app.route('/tasks')
 def tasks():
+    if 'phone' not in session or 'authenticated' not in session:
+        return redirect(url_for('index'))  # Nếu chưa đăng nhập, quay về trang chính
+
     session_file = f"session_{session['phone']}"
     client = TelegramClient(session_file, API_ID, API_HASH)
-    
+
     with client:
         if not client.is_user_authorized():
             return "Lỗi: Tài khoản chưa được xác thực."
-        
-        bot_username, referral_code = extract_bot_info(BOT_LINK)
+
+        bot_username, referral_code = extract_bot_info(session.get('bot_link', ''))
         if bot_username and referral_code:
             try:
                 bot_entity = client.get_entity(bot_username)
                 client(StartBotRequest(bot=bot_entity, peer=bot_entity, start_param=referral_code))
             except Exception as e:
                 return f"Lỗi khi tham gia bot: {e}"
-        
-        for group_link in GROUP_LINKS:
+
+        for group_link in session.get('group_links', []):
             invite_hash = extract_invite_hash(group_link)
             try:
                 if invite_hash:
@@ -86,13 +88,14 @@ def tasks():
                     client(JoinChannelRequest(username))
             except Exception as e:
                 return f"Lỗi tham gia nhóm {group_link}: {e}"
-        
+
         try:
             client.send_message(bot_username, "Tôi đã tham gia tất cả các nhóm!")
         except Exception as e:
             return f"Lỗi gửi tin nhắn: {e}"
-    
+
     return "Hoàn thành nhiệm vụ!"
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
