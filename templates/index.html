@@ -1,10 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Home</title>
+    <title>Telegram Bot Web</title>
 </head>
 <body>
-    <h1>Chào mừng bạn!</h1>
-    <a href="/login">Đăng nhập</a> | <a href="/register">Đăng ký</a>
+    <h2>Nhập thông tin Telegram</h2>
+    <form method="POST">
+        API ID: <input type="text" name="api_id"><br>
+        API Hash: <input type="text" name="api_hash"><br>
+        Số điện thoại: <input type="text" name="phone"><br>
+        Link bot: <input type="text" name="bot_link"><br>
+        Link nhóm (mỗi nhóm 1 dòng): <textarea name="group_links"></textarea><br>
+        <button type="submit">Bắt đầu</button>
+    </form>
 </body>
 </html>
