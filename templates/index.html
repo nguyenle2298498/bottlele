@@ -3,27 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Bot Web</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <title>Nhập Thông Tin</title>
 </head>
 <body>
-    <div class="container mt-5">
-        <h2 class="text-center">Kết Nối Telegram Bot</h2>
-        <form method="POST">
-            <div class="mb-3">
-                <label class="form-label">Số điện thoại Telegram:</label>
-                <input type="text" class="form-control" name="phone" required placeholder="Nhập số điện thoại của bạn">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Link bot Telegram:</label>
-                <input type="text" class="form-control" name="bot_link" required placeholder="Nhập link bot">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Danh sách nhóm Telegram:</label>
-                <textarea class="form-control" name="group_links" rows="4" required placeholder="Nhập mỗi link nhóm trên một dòng"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Xác nhận</button>
-        </form>
-    </div>
+    <h2>Nhập Thông Tin Telegram</h2>
+    <form method="POST">
+        <label for="phone">Số điện thoại:</label>
+        <input type="text" id="phone" name="phone" required><br>
+
+        <label for="bot_link">Link bot:</label>
+        <input type="text" id="bot_link" name="bot_link" required><br>
+
+        <label for="group_links">Danh sách nhóm (mỗi dòng một nhóm):</label>
+        <textarea id="group_links" name="group_links" rows="5" required></textarea><br>
+
+        <button type="submit">Tiếp tục</button>
+    </form>
 </body>
 </html>
