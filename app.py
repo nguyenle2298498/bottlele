@@ -87,4 +87,7 @@ def tasks():
     return "Hoàn thành nhiệm vụ!"
 
 if __name__ == '__main__':
+    import sys
+    if 'input' in sys.modules:
+        sys.modules['input'] = lambda: session.get('phone', '')
     app.run(debug=True, host='0.0.0.0', port=5000)
