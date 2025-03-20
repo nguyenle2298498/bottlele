@@ -25,29 +25,21 @@ def index():
         session['phone'] = request.form['phone']
         session['bot_link'] = request.form['bot_link']
         session['group_links'] = request.form['group_links'].split('\n')
-        return redirect(url_for('run_bot'))
+        return redirect(url_for('verify_otp'))
     return render_template('index.html')
 
-@app.route('/run_bot')
-def run_bot():
+@app.route('/verify_otp', methods=['GET', 'POST'])
+def verify_otp():
     session_file = f"session_{session['phone']}"
     client = TelegramClient(session_file, int(session['api_id']), session['api_hash'])
     
     with client:
         if not client.is_user_authorized():
             client.send_code_request(session['phone'])
+            if request.method == 'POST':
+                client.sign_in(session['phone'], request.form['otp'])
+                return redirect(url_for('tasks'))
             return render_template('otp.html')
-    
-    return redirect(url_for('tasks'))
-
-@app.route('/otp', methods=['POST'])
-def otp():
-    session_file = f"session_{session['phone']}"
-    client = TelegramClient(session_file, int(session['api_id']), session['api_hash'])
-    
-    with client:
-        client.sign_in(session['phone'], request.form['otp'])
-    
     return redirect(url_for('tasks'))
 
 @app.route('/tasks')
