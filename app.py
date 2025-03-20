@@ -33,20 +33,31 @@ def index():
 
 @app.route('/verify_otp', methods=['GET', 'POST'])
 def verify_otp():
+    if 'phone' not in session:
+        return redirect(url_for('index'))  # Nếu không có số điện thoại, quay về trang chính
+    
     session_file = f"session_{session['phone']}"
     client = TelegramClient(session_file, API_ID, API_HASH)
     
     client.connect()
     if not client.is_user_authorized():
-        client.send_code_request(session['phone'])
+        try:
+            client.send_code_request(session['phone'])
+        except Exception as e:
+            return f"Lỗi gửi mã OTP: {e}"
+        
         if request.method == 'POST':
             try:
                 client.sign_in(session['phone'], request.form['otp'])
-                return redirect(url_for('tasks'))
+                session['authenticated'] = True  # Lưu trạng thái đăng nhập
+                return redirect(url_for('tasks'))  # Chuyển hướng đến trang tasks
             except Exception as e:
                 return f"Lỗi xác thực OTP: {e}"
         return render_template('otp.html')
+    
+    session['authenticated'] = True
     return redirect(url_for('tasks'))
+
 
 @app.route('/tasks')
 def tasks():
