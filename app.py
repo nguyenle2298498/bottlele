@@ -34,34 +34,40 @@ def index():
 @app.route('/verify_otp', methods=['GET', 'POST'])
 def verify_otp():
     if 'phone' not in session:
-        return redirect(url_for('index'))  # Quay về trang nhập số nếu chưa có session
-    
+        return redirect(url_for('index'))  # Quay lại trang nhập số điện thoại nếu session bị mất
+
     session_file = f"session_{session['phone']}"
     client = TelegramClient(session_file, API_ID, API_HASH)
-
+    
     client.connect()
+    
     if not client.is_user_authorized():
         try:
             client.send_code_request(session['phone'])
         except Exception as e:
             return f"Lỗi gửi mã OTP: {e}"
-
+        
         if request.method == 'POST':
+            otp_code = request.form.get('otp')
+            if not otp_code:
+                return "Vui lòng nhập mã OTP."
+
             try:
-                client.sign_in(session['phone'], request.form['otp'])
-                session['authenticated'] = True  # Đánh dấu đã đăng nhập thành công
+                client.sign_in(session['phone'], otp_code)
+                session['authenticated'] = True  # Đánh dấu tài khoản đã được xác thực
                 return redirect(url_for('tasks'))
             except Exception as e:
                 return f"Lỗi xác thực OTP: {e}"
+        
         return render_template('otp.html')
-    
+
     session['authenticated'] = True
     return redirect(url_for('tasks'))
 
 @app.route('/tasks')
 def tasks():
     if 'phone' not in session or 'authenticated' not in session:
-        return redirect(url_for('index'))  # Nếu chưa đăng nhập, quay về trang chính
+        return redirect(url_for('index'))  # Nếu chưa xác thực, quay lại trang chính
 
     session_file = f"session_{session['phone']}"
     client = TelegramClient(session_file, API_ID, API_HASH)
@@ -95,6 +101,7 @@ def tasks():
             return f"Lỗi gửi tin nhắn: {e}"
 
     return "Hoàn thành nhiệm vụ!"
+
 
 
 if __name__ == '__main__':
