@@ -7,6 +7,10 @@ import os, re, time
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+# Thông tin API Telegram
+API_ID = 25437670  # Thay bằng API ID của bạn
+API_HASH = "7a60d938df5a25122326f007055013b6"  # Thay bằng API Hash của bạn
+
 # Hàm trích xuất thông tin bot
 def extract_bot_info(bot_link):
     match = re.search(r't\.me/([a-zA-Z0-9_]+)\?start=([a-zA-Z0-9_-]+)', bot_link)
@@ -20,8 +24,6 @@ def extract_invite_hash(group_link):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        session['api_id'] = request.form['api_id']
-        session['api_hash'] = request.form['api_hash']
         session['phone'] = request.form['phone']
         session['bot_link'] = request.form['bot_link']
         session['group_links'] = request.form['group_links'].split('\n')
@@ -31,40 +33,56 @@ def index():
 @app.route('/verify_otp', methods=['GET', 'POST'])
 def verify_otp():
     session_file = f"session_{session['phone']}"
-    client = TelegramClient(session_file, int(session['api_id']), session['api_hash'])
+    client = TelegramClient(session_file, API_ID, API_HASH)
     
-    with client:
-        if not client.is_user_authorized():
+    client.connect()
+    if not client.is_user_authorized():
+        try:
             client.send_code_request(session['phone'])
-            if request.method == 'POST':
+        except Exception as e:
+            return f"Lỗi gửi mã OTP: {e}"
+        
+        if request.method == 'POST':
+            try:
                 client.sign_in(session['phone'], request.form['otp'])
                 return redirect(url_for('tasks'))
-            return render_template('otp.html')
+            except Exception as e:
+                return f"Lỗi xác thực OTP: {e}"
+        return render_template('otp.html')
     return redirect(url_for('tasks'))
 
 @app.route('/tasks')
 def tasks():
     session_file = f"session_{session['phone']}"
-    client = TelegramClient(session_file, int(session['api_id']), session['api_hash'])
+    client = TelegramClient(session_file, API_ID, API_HASH)
     
-    with client:
-        bot_username, referral_code = extract_bot_info(session['bot_link'])
-        if bot_username and referral_code:
+    client.connect()
+    if not client.is_user_authorized():
+        return "Lỗi: Tài khoản chưa được xác thực."
+    
+    bot_username, referral_code = extract_bot_info(session['bot_link'])
+    if bot_username and referral_code:
+        try:
             bot_entity = client.get_entity(bot_username)
             client(StartBotRequest(bot=bot_entity, peer=bot_entity, start_param=referral_code))
-        
-        for group_link in session['group_links']:
-            invite_hash = extract_invite_hash(group_link)
-            try:
-                if invite_hash:
-                    client(ImportChatInviteRequest(invite_hash))
-                else:
-                    username = group_link.split("/")[-1]
-                    client(JoinChannelRequest(username))
-            except Exception as e:
-                return f"Lỗi tham gia nhóm {group_link}: {e}"
-        
+        except Exception as e:
+            return f"Lỗi khi tham gia bot: {e}"
+    
+    for group_link in session['group_links']:
+        invite_hash = extract_invite_hash(group_link)
+        try:
+            if invite_hash:
+                client(ImportChatInviteRequest(invite_hash))
+            else:
+                username = group_link.split("/")[-1]
+                client(JoinChannelRequest(username))
+        except Exception as e:
+            return f"Lỗi tham gia nhóm {group_link}: {e}"
+    
+    try:
         client.send_message(bot_username, "Tôi đã tham gia tất cả các nhóm!")
+    except Exception as e:
+        return f"Lỗi gửi tin nhắn: {e}"
     
     return "Hoàn thành nhiệm vụ!"
 
