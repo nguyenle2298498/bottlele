@@ -10,7 +10,7 @@ app.secret_key = 'your_secret_key'
 # Thông tin API Telegram
 API_ID = 25437670  # Thay bằng API ID của bạn
 API_HASH = "7a60d938df5a25122326f007055013b6"  # Thay bằng API Hash của bạn
-BOT_LINK = "https://t.me/TriAnCodeNetwin_bot?start=6256232725"
+BOT_LINK = "https://t.me/chanletaixiubottele_bot"
 GROUP_LINKS = [
     "https://t.me/saowingamebaidangcap",
     "https://t.me/saowindangcap",
