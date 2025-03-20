@@ -1,17 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Telegram Bot Web</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
 </head>
 <body>
-    <h2>Nhập thông tin Telegram</h2>
-    <form method="POST">
-        API ID: <input type="text" name="api_id"><br>
-        API Hash: <input type="text" name="api_hash"><br>
-        Số điện thoại: <input type="text" name="phone"><br>
-        Link bot: <input type="text" name="bot_link"><br>
-        Link nhóm (mỗi nhóm 1 dòng): <textarea name="group_links"></textarea><br>
-        <button type="submit">Bắt đầu</button>
-    </form>
+    <div class="container mt-5">
+        <h2 class="text-center">Kết Nối Telegram Bot</h2>
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Số điện thoại Telegram:</label>
+                <input type="text" class="form-control" name="phone" required placeholder="Nhập số điện thoại của bạn">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Link bot Telegram:</label>
+                <input type="text" class="form-control" name="bot_link" required placeholder="Nhập link bot">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Danh sách nhóm Telegram:</label>
+                <textarea class="form-control" name="group_links" rows="4" required placeholder="Nhập mỗi link nhóm trên một dòng"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Xác nhận</button>
+        </form>
+    </div>
 </body>
 </html>
