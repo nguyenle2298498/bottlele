@@ -1,112 +1,80 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-import sqlite3
-from telethon import TelegramClient
+from flask import Flask, request, render_template, session, redirect, url_for
+from telethon.sync import TelegramClient
+from telethon.tl.functions.messages import StartBotRequest, ImportChatInviteRequest
+from telethon.tl.functions.channels import JoinChannelRequest
+import os, re, time
 
-# Config Flask
 app = Flask(__name__)
-app.secret_key = "super_secret_key"
+app.secret_key = 'your_secret_key'
 
-# Config Telegram
-API_ID = 25437670  
-API_HASH = "7a60d938df5a25122326f007055013b6"
-client = TelegramClient("session", API_ID, API_HASH)
+# Hàm trích xuất thông tin bot
+def extract_bot_info(bot_link):
+    match = re.search(r't\.me/([a-zA-Z0-9_]+)\?start=([a-zA-Z0-9_-]+)', bot_link)
+    return (match.group(1), match.group(2)) if match else (None, None)
 
-# Khởi tạo database
-def init_db():
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT
-    )""")
-    conn.commit()
-    conn.close()
+# Hàm trích xuất mã mời nhóm
+def extract_invite_hash(group_link):
+    match = re.search(r't\.me/\+([a-zA-Z0-9_-]+)', group_link)
+    return match.group(1) if match else None
 
-init_db()
-
-# Trang chủ
-@app.route("/")
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template("index.html")
+    if request.method == 'POST':
+        session['api_id'] = request.form['api_id']
+        session['api_hash'] = request.form['api_hash']
+        session['phone'] = request.form['phone']
+        session['bot_link'] = request.form['bot_link']
+        session['group_links'] = request.form['group_links'].split('\n')
+        return redirect(url_for('run_bot'))
+    return render_template('index.html')
 
-# Đăng ký
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
-        try:
-            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
-            conn.commit()
-            flash("Đăng ký thành công! Hãy đăng nhập.", "success")
-        except:
-            flash("Tài khoản đã tồn tại!", "danger")
-        conn.close()
-        return redirect(url_for("login"))
-
-    return render_template("register.html")
-
-# Đăng nhập
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
-        user = cursor.fetchone()
-        conn.close()
-
-        if user:
-            session["username"] = username
-            if username == "khachwen" and password == "Hehe12341":
-                return redirect(url_for("admin"))
-            return redirect(url_for("dashboard"))
-        else:
-            flash("Sai tài khoản hoặc mật khẩu!", "danger")
-
-    return render_template("login.html")
-
-# Dashboard user
-@app.route("/dashboard")
-def dashboard():
-    if "username" not in session:
-        return redirect(url_for("login"))
-    return f"Chào mừng {session['username']}! <a href='/logout'>Đăng xuất</a>"
-
-# Trang admin
-@app.route("/admin")
-def admin():
-    if "username" not in session or session["username"] != "khachwen":
-        return "Bạn không có quyền truy cập!"
-    return render_template("admin.html")
-
-# Chức năng gửi tin nhắn Telegram
-@app.route("/send_message", methods=["POST"])
-def send_message():
-    if "username" not in session or session["username"] != "khachwen":
-        return "Bạn không có quyền!"
-
-    message = request.form["message"]
+@app.route('/run_bot')
+def run_bot():
+    session_file = f"session_{session['phone']}"
+    client = TelegramClient(session_file, int(session['api_id']), session['api_hash'])
     
     with client:
-        client.loop.run_until_complete(client.send_message("me", message))
+        if not client.is_user_authorized():
+            client.send_code_request(session['phone'])
+            return render_template('otp.html')
     
-    flash("Đã gửi tin nhắn thành công!", "success")
-    return redirect(url_for("admin"))
+    return redirect(url_for('tasks'))
 
-# Đăng xuất
-@app.route("/logout")
-def logout():
-    session.pop("username", None)
-    return redirect(url_for("index"))
+@app.route('/otp', methods=['POST'])
+def otp():
+    session_file = f"session_{session['phone']}"
+    client = TelegramClient(session_file, int(session['api_id']), session['api_hash'])
+    
+    with client:
+        client.sign_in(session['phone'], request.form['otp'])
+    
+    return redirect(url_for('tasks'))
 
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route('/tasks')
+def tasks():
+    session_file = f"session_{session['phone']}"
+    client = TelegramClient(session_file, int(session['api_id']), session['api_hash'])
+    
+    with client:
+        bot_username, referral_code = extract_bot_info(session['bot_link'])
+        if bot_username and referral_code:
+            bot_entity = client.get_entity(bot_username)
+            client(StartBotRequest(bot=bot_entity, peer=bot_entity, start_param=referral_code))
+        
+        for group_link in session['group_links']:
+            invite_hash = extract_invite_hash(group_link)
+            try:
+                if invite_hash:
+                    client(ImportChatInviteRequest(invite_hash))
+                else:
+                    username = group_link.split("/")[-1]
+                    client(JoinChannelRequest(username))
+            except Exception as e:
+                return f"Lỗi tham gia nhóm {group_link}: {e}"
+        
+        client.send_message(bot_username, "Tôi đã tham gia tất cả các nhóm!")
+    
+    return "Hoàn thành nhiệm vụ!"
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
