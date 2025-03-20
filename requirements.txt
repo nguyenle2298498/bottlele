@@ -1,6 +1,3 @@
-requests
-random2
-emoji
-telebot
-mysql-connector-python
-colorama
+flask
+telethon
+sqlite3
